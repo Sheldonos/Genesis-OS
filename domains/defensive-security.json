@@ -1,0 +1,11 @@
+{
+  "domain": "defensive-security",
+  "mode": "authorized-assets-only",
+  "principles": [
+    "deny offensive execution in the base runtime",
+    "require explicit owned asset scope",
+    "prefer detection, validation, hardening, and controlled emulation",
+    "log every security-relevant action"
+  ],
+  "candidate_upstreams": ["atomic-red-team", "HackTricks", "tulip", "Ominis-OSINT", "pentagi"]
+}

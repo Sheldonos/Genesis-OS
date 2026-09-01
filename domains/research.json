@@ -1,0 +1,5 @@
+{
+  "domain": "research",
+  "default_loop": ["observe", "retrieve", "hypothesize", "experiment", "evaluate", "remember"],
+  "candidate_upstreams": ["ASI-Evolve", "Crucix", "WorldMonitor", "OpenSpace", "deer-flow", "AutoRAG"]
+}

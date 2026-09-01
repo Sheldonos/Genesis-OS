@@ -1,0 +1,11 @@
+{
+  "domain": "capital-markets",
+  "default_mode": "research-and-simulation",
+  "principles": [
+    "separate data, signal, portfolio construction, risk, and execution",
+    "paper/simulated execution by default",
+    "live execution requires explicit operator approval and broker-specific risk limits",
+    "record every decision and realized outcome"
+  ],
+  "candidate_upstreams": ["OpenBB", "Kronos", "NautilusTrader", "TradingAgents", "AI-Trader", "Vibe-Trading"]
+}

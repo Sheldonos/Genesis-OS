@@ -1,0 +1,18 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Genesis Capability Manifest",
+  "type": "object",
+  "required": ["name", "description"],
+  "properties": {
+    "name": {"type": "string", "pattern": "^[a-z0-9_.-]+$"},
+    "description": {"type": "string"},
+    "tags": {"type": "array", "items": {"type": "string"}, "uniqueItems": true},
+    "risk": {"enum": ["READ_ONLY", "LOW", "MEDIUM", "HIGH", "CRITICAL"]},
+    "requires": {"type": "array", "items": {"type": "string"}, "uniqueItems": true},
+    "permissions": {"type": "array", "items": {"type": "string"}, "uniqueItems": true},
+    "domains": {"type": "array", "items": {"type": "string"}, "uniqueItems": true},
+    "provider": {"type": "string"},
+    "learnable": {"type": "boolean"}
+  },
+  "additionalProperties": false
+}
