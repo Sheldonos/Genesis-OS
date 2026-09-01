@@ -104,14 +104,14 @@ class GenesisRuntime:
             manifest = route.manifest
             decision = self.policy.authorize(manifest, context)
             if not decision.allowed:
-                result = StepResult(
+                denied: StepResult = StepResult(
                     capability=capability,
                     success=False,
                     error=decision.reason,
                     score=0.0,
                     metadata={"provider": manifest.provider},
                 )
-                results.append(result)
+                results.append(denied)
                 self.memory.remember_episode(
                     run_id,
                     capability,
@@ -120,7 +120,7 @@ class GenesisRuntime:
                     {"error": decision.reason},
                     provider=manifest.provider,
                 )
-                run = RunResult(
+                run: RunResult = RunResult(
                     goal=goal,
                     success=False,
                     steps=results,
@@ -133,34 +133,35 @@ class GenesisRuntime:
                 self.learning.observe(run)
                 return run
 
+            step: StepResult
             try:
                 output = self.registry.handler(capability, manifest.provider)(state)
                 state[capability] = output
-                result = StepResult(
+                step = StepResult(
                     capability=capability,
                     success=True,
                     output=output,
                     metadata={"provider": manifest.provider},
                 )
             except Exception as exc:
-                result = StepResult(
+                step = StepResult(
                     capability=capability,
                     success=False,
                     error=str(exc),
                     metadata={"provider": manifest.provider},
                 )
 
-            result.score = self.evaluator.score(result)
-            results.append(result)
+            step.score = self.evaluator.score(step)
+            results.append(step)
             self.memory.remember_episode(
                 run_id,
                 capability,
-                result.success,
-                result.score,
-                {"output": result.output, "error": result.error},
+                step.success,
+                step.score,
+                {"output": step.output, "error": step.error},
                 provider=manifest.provider,
             )
-            if not result.success:
+            if not step.success:
                 run = RunResult(
                     goal=goal,
                     success=False,

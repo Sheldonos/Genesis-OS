@@ -8,11 +8,11 @@ from .catalog import demo_registry, objective_demo_source
 from .memory import MemoryStore
 from .objectives import ObjectiveEngine
 from .runtime import GenesisRuntime
-from .types import ExecutionContext, Goal
+from .types import ExecutionContext, Goal, RunResult
 from .world import WorldModel
 
 
-def _result_payload(result):
+def _result_payload(result: RunResult) -> dict:
     return {
         "run_id": result.run_id,
         "success": result.success,
