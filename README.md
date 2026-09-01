@@ -1,76 +1,97 @@
 # Genesis OS
 
+[![CI](https://github.com/Sheldonos/genesis-os/actions/workflows/ci.yml/badge.svg)](https://github.com/Sheldonos/genesis-os/actions/workflows/ci.yml)
+[![Python](https://img.shields.io/badge/python-3.11%2B-blue)](https://www.python.org/downloads/)
+[![License](https://img.shields.io/badge/license-Apache--2.0-green)](LICENSE)
+[![Version](https://img.shields.io/badge/version-0.2.0-informational)](pyproject.toml)
+
 **A policy-governed capability operating system for persistent, composable autonomous intelligence.**
 
-Genesis OS turns objectives into auditable capability graphs, acquires missing trusted capabilities, routes work across interchangeable providers, persists objective/world state, learns from outcomes, and promotes repeated successful plans into reusable procedures.
+Genesis OS is a Python kernel that turns long-lived objectives into auditable execution graphs. It acquires missing trusted capabilities, routes work across interchangeable providers, persists objective and world state across runs, learns from outcomes, and promotes repeated successful plans into reusable procedures — all through a single policy boundary.
 
-It is intentionally **not** marketed as AGI. The engineering target is concrete:
+> **Design thesis:** The system should resemble an operating system more than a chatbot framework. Models are processors. Agents are ephemeral processes. Capabilities are syscalls. Memory is a hierarchy. Policy is the kernel security boundary.
 
-> Given a persistent objective, determine the capabilities required to pursue it, acquire approved missing capabilities, choose providers using observed outcomes, execute through one policy boundary, update structured world state, create learning questions from failures, and compile repeated successful behavior into reusable procedures.
+---
 
 ## Why this is different
 
-Most agent systems stop at `model -> tools -> actions`. Genesis owns the layer above that:
+Most agent systems stop at `model → tools → actions`. Genesis owns the layer above:
 
 ```text
 Persistent Objective
-      |
-      v
-Capability Graph ---- missing? ----> Trusted Capability Acquisition
-      |                                      |
-      v                                      v
-Provider Router <------- outcome history / cost / latency
-      |
-      v
+      │
+      ▼
+Capability Graph ──── missing? ──▶ Trusted Capability Acquisition
+      │                                      │
+      ▼                                      ▼
+Provider Router ◀──────── outcome history / cost / latency
+      │
+      ▼
 Central Policy Gate
-      |
-      v
-Execution -> Evaluation -> Episodic Memory
-      |                         |
-      v                         v
+      │
+      ▼
+Execution → Evaluation → Episodic Memory
+      │                         │
+      ▼                         ▼
 World Model              Procedure Compiler
-      |                         |
-      +------ Learning / Curiosity <------+
-                    |
-                    v
+      │                         │
+      └────── Learning / Curiosity ◀────────┘
+                    │
+                    ▼
               next heartbeat
 ```
 
-The goal is not a permanent zoo of named agents. Agents, models, skills, browsers, sandboxes, APIs, humans, and machines are replaceable capability providers. Genesis keeps the durable objective, policy, memory, learning, and capability-selection state.
+Agents, models, skills, browsers, sandboxes, APIs, humans, and machines are all **replaceable capability providers**. Genesis keeps the durable objective, policy, memory, learning, and capability-selection state — not the providers.
 
-## v0.2 implemented runtime
-
-- **Persistent objectives** — objectives survive individual runs and advance through explicit heartbeats.
-- **Structured world model** — typed entities and relationships hold durable state outside prompt context.
-- **Safe capability acquisition** — missing capabilities may be registered from explicit verified sources; arbitrary generated code is not executed.
-- **Provider routing** — multiple providers can implement one logical capability and are ranked using observed quality, cost, and latency.
-- **Procedure compilation** — repeatedly successful plans are promoted into reusable procedures and bypass replanning on later runs.
-- **Learning/curiosity signals** — unexplained failures and weak outcomes generate stored learning questions for future investigation.
-- **Central policy boundary** — permissions, risk tiers, owned-asset scope, live-finance approval, and sensitive-domain restrictions still gate every execution.
-- **Backward-compatible v0.1 kernel** — dependency planning, capability discovery, episodic memory, evaluation, and the original CLI demo remain intact.
+---
 
 ## Quick start
 
 ```bash
-python -m pip install -e '.[dev]'
+# install with dev dependencies
+pip install -e '.[dev]'
+
+# run the test suite (25 tests)
 pytest -q
-python -m genesis_os.cli demo
-python -m genesis_os.cli objective-demo
+
+# basic 3-step capability demo
+genesis demo
+
+# 3-heartbeat objective demo: acquire → compile → reuse
+genesis objective-demo
 ```
 
-`objective-demo` performs three heartbeats. The first acquires a missing verified capability, the second reaches the compilation threshold, and the third reuses the compiled procedure.
+Expected output from `objective-demo`:
 
-Expected metadata pattern:
-
-```text
-heartbeat 1: acquired_capabilities=[analyze.signal], procedure_reused=false
-heartbeat 2: procedure_compiled=true
-heartbeat 3: procedure_reused=true
 ```
+heartbeat 1: acquired_capabilities=["analyze.signal"], procedure_reused=false
+heartbeat 2: procedure_compiled=true, procedure_reused=false
+heartbeat 3: procedure_compiled=false, procedure_reused=true
+```
+
+---
+
+## v0.2 runtime — what is implemented
+
+| Feature | Module | Description |
+|---|---|---|
+| **Persistent objectives** | `objectives.py` | Objectives survive individual runs; advanced through explicit heartbeats |
+| **Structured world model** | `world.py` | SQLite entity/relation graph holds durable state outside prompt context |
+| **Safe capability acquisition** | `acquisition.py` | Registers only verified adapters with trust ≥ 0.8; rejects critical-risk and offensive-security candidates |
+| **Provider routing** | `routing.py` | Multiple providers per capability; ranked by observed reliability minus cost and latency penalties |
+| **Procedure compilation** | `compiler.py` | Repeatedly successful plans promoted to reusable deterministic procedures after N successes |
+| **Learning / curiosity signals** | `learning.py` | Failures and weak outcomes generate stored questions for future investigation |
+| **Central policy gate** | `policy.py` | Every execution crosses one gate; providers cannot override a denial |
+| **Dependency planner** | `planner.py` | Topological sort of capability DAG with cycle detection |
+| **Episodic memory** | `memory.py` | Per-provider run history, procedure store, objective state, curiosity log |
+| **Evaluator** | `evaluator.py` | Outcome scoring per step; feeds routing and learning |
+| **CLI** | `cli.py` | `genesis demo`, `genesis objective-demo`, `genesis capabilities` |
+
+---
 
 ## Capability contract
 
-Capabilities describe the logical operation independently from its provider:
+A capability describes the logical operation independently of which provider performs it:
 
 ```json
 {
@@ -85,38 +106,235 @@ Capabilities describe the logical operation independently from its provider:
 }
 ```
 
-Multiple providers can register the same `name`. The router chooses among them using observed outcomes and provider attributes.
+Multiple providers can register the same `name`. The router selects among them using observed outcomes, cost, and latency. Providers are swappable without changing the objective or policy.
+
+---
+
+## Runtime loop
+
+On each heartbeat the runtime:
+
+1. Loads the persistent objective.
+2. Checks for a compiled procedure and reuses it if available.
+3. Otherwise resolves the dependency graph (topological sort).
+4. Attempts to acquire any missing capabilities from configured trusted sources.
+5. Routes each capability to a provider via the outcome-aware router.
+6. Authorises the selected provider through the policy gate.
+7. Executes and evaluates each step; stores episodes.
+8. Promotes the plan to a compiled procedure when the success threshold is reached.
+9. Updates objective and world-model state.
+10. Converts failures and weak scores into curiosity signals.
+
+---
 
 ## Safety boundaries
 
 Genesis is designed for long-running autonomy without making the base runtime unrestricted.
 
-- Offensive-security execution is disabled in the base runtime.
-- Critical-risk capabilities are denied by default.
-- Defensive-security actions require explicit owned-asset scope.
-- Live financial execution is off by default and requires explicit authorization.
-- Capability acquisition accepts only verified adapters above a trust threshold.
-- Generated code should execute in an external isolated sandbox and pass evaluation before it is eligible for registration.
+| Hard stop | Default |
+|---|---|
+| `CRITICAL`-risk capabilities | Always denied |
+| `offensive-security` tagged capabilities | Always denied |
+| `defensive-security` capabilities | Require explicit `owned_assets` scope |
+| `live-trading` capabilities | Require `allow_live_finance=True` |
+| `HIGH`-risk capabilities | Require `high_risk_execute` permission |
+| Unverified capability acquisition | Rejected (must be `verified=True`, `trust_score ≥ 0.8`) |
 
-See `docs/THREAT_MODEL.md`.
+These are reference defaults enforced in [`policy.py`](src/genesis_os/policy.py). They are not a substitute for production governance — they establish the minimum safe baseline.
+
+See [`docs/THREAT_MODEL.md`](docs/THREAT_MODEL.md) for the full threat model.
+
+---
+
+## Architecture
+
+```
+src/genesis_os/
+├── types.py          # Shared contracts: CapabilityManifest, Goal, RunResult, RiskTier, …
+├── policy.py         # Central policy gate (the kernel security boundary)
+├── registry.py       # Capability registry — multi-provider, discoverable
+├── planner.py        # Dependency-aware topological planner with cycle detection
+├── routing.py        # Outcome-aware provider router
+├── acquisition.py    # Safe capability acquisition from trusted sources
+├── compiler.py       # Procedure compilation: repeated success → reusable plan
+├── evaluator.py      # Step outcome scorer
+├── learning.py       # Curiosity signals from failures and weak outcomes
+├── memory.py         # SQLite store: episodes, procedures, objectives, curiosity
+├── world.py          # SQLite entity/relation world model
+├── objectives.py     # Persistent objective control plane and heartbeats
+├── runtime.py        # Closed-loop orchestration (the kernel)
+├── catalog.py        # Demo registry, manifest loader, example capability source
+├── cli.py            # CLI entry point
+└── __init__.py       # Public API
+```
+
+### Kernel invariants
+
+Every design decision traces to one of these:
+
+1. Every action has a named capability.
+2. Every capability has a manifest and risk tier.
+3. Every execution crosses the policy gate.
+4. Every run has an immutable run identifier.
+5. Every meaningful outcome is evaluated and stored.
+6. Providers never write directly into another provider's private state.
+7. Long-lived knowledge is outside prompt history.
+8. A domain pack cannot weaken kernel policy.
+9. Self-extension means adding/versioning a capability, not silently rewriting the kernel.
+10. High-risk actions require stronger authorisation than reasoning/research.
+
+---
+
+## Memory hierarchy
+
+| Layer | Storage | Lifetime |
+|---|---|---|
+| Working memory | Current run `state` dict | Single run |
+| Episodic memory | `episodes` table | Persistent across runs |
+| World / semantic memory | `entities` + `relations` tables | Persistent |
+| Procedural memory | `procedures` table | Persistent; versioned by signature |
+| Curiosity / learning | `curiosity` table | Persistent until resolved |
+
+---
+
+## Extending Genesis
+
+### Register a capability
+
+```python
+from genesis_os import CapabilityManifest, RiskTier
+from genesis_os.registry import CapabilityRegistry
+
+registry = CapabilityRegistry()
+registry.register(
+    CapabilityManifest(
+        name="search.web",
+        description="Execute a web search and return structured results",
+        tags=("search", "web"),
+        risk=RiskTier.LOW,
+        permissions=("web_search",),
+        provider="duckduckgo",
+        cost=0.001,
+        latency_ms=400,
+    ),
+    handler=lambda state: {"results": ["…"]},
+)
+```
+
+### Run a goal
+
+```python
+from genesis_os import GenesisRuntime, Goal, ExecutionContext
+
+runtime = GenesisRuntime(registry)
+result = runtime.run(
+    Goal(
+        objective="Find recent news on AI safety",
+        required_capabilities=("search.web",),
+        metadata={"query": "AI safety 2025"},
+    ),
+    ExecutionContext(approved_permissions={"web_search"}),
+)
+print(result.success, result.metadata)
+```
+
+### Create a persistent objective
+
+```python
+from genesis_os import GenesisRuntime, ObjectiveEngine, Goal
+from genesis_os.memory import MemoryStore
+from genesis_os.world import WorldModel
+
+memory = MemoryStore("objectives.db")
+world  = WorldModel("world.db")
+engine = ObjectiveEngine(GenesisRuntime(registry, memory=memory), memory, world)
+
+record = engine.create(Goal("Monitor signals", ("analyze.signal",)))
+
+# Each call advances the objective by one heartbeat
+result = engine.heartbeat(record.objective_id)
+```
+
+---
+
+## Development
+
+```bash
+# install
+pip install -e '.[dev]'
+
+# lint
+ruff check src/ tests/
+
+# test
+pytest -q
+
+# smoke tests
+genesis demo
+genesis objective-demo
+genesis capabilities
+```
+
+### Project layout
+
+```
+genesis-os/
+├── src/genesis_os/      # Library source
+├── tests/               # 25 pytest tests
+├── docs/                # Architecture, threat model, capability map, v0.2 spec
+├── domains/             # Domain pack descriptors (capital-markets, defensive-security, research)
+├── capabilities/        # manifest.schema.json — JSON Schema for capability manifests
+├── research/            # Upstream project validation notes
+├── pyproject.toml       # Build, test, and lint configuration
+└── .github/workflows/   # CI: lint + tests + smoke tests on every push
+```
+
+---
+
+## Roadmap
+
+### v0.2 (current) — Closed-loop kernel
+Persistent objectives, safe acquisition, provider routing, procedure compilation, learning signals, world model, policy gate.
+
+### v0.3 (next)
+- MCP adapter with capability-manifest translation
+- A2A peer adapter
+- E2B / Firecracker-class sandbox provider
+- Durable scheduler / heartbeat worker
+- Model router and context-budget manager
+- Signed capability packages and provenance
+- Human approval service for elevated permissions
+- Distributed run ledger and observability exporter
+- Semantic / graph memory adapter
+- Control-plane UI (objectives, capabilities, permissions, runs, learning signals)
+
+---
 
 ## What v0.2 does not pretend to be
 
-The reference kernel does not yet ship production MCP/A2A adapters, distributed scheduling, a frontier-model router, remote sandbox execution, a human-approval service, or a web control plane. Those belong behind the interfaces already present rather than inside the kernel.
+The reference kernel does not ship production MCP/A2A adapters, distributed scheduling, a frontier-model router, remote sandbox execution, a human-approval service, or a web control plane. Those belong behind the interfaces already present — not inside the kernel.
 
-The next milestone is v0.3: real protocol/provider adapters plus a durable heartbeat service. See `docs/V0_2_RUNTIME.md`.
+---
 
-## Upstream strategy
+## Contributing
 
-Genesis does **not** vendor the large set of upstream projects that informed the architecture. They remain replaceable providers/domain packs with their own licenses and security posture. This avoids turning the kernel into an unmaintainable transitive dependency graph.
+1. Fork the repo and create a branch from `main`.
+2. Make your change. Add or update tests — `pytest -q` must pass.
+3. Run `ruff check src/ tests/` — zero errors required.
+4. Open a pull request with a clear description of the change and its motivation.
 
-See `docs/CAPABILITY_MAP.md` and `research/VALIDATION.md`.
+Bug reports and feature proposals are welcome as GitHub Issues.
+
+---
 
 ## Contributors
 
 - [@sheldonOS](https://github.com/sheldonOS)
 - [@sheldonibm](https://github.com/sheldonibm)
 
+---
+
 ## License
 
-The Genesis OS reference code in this repository is Apache-2.0. Upstream projects remain governed by their own licenses.
+The Genesis OS reference code in this repository is [Apache-2.0](LICENSE).  
+Upstream projects referenced in `docs/CAPABILITY_MAP.md` and `research/` remain governed by their own licenses.
